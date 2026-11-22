@@ -6,38 +6,24 @@
     <title>PhantomGuard</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
-        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 20px; }
+        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; box-sizing: border-box; padding: 20px; text-align: center; }
         h1 { color: #333; font-size: 2em; margin-bottom: 10px; }
         p { color: #666; margin-bottom: 30px; }
-        button { background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 1.2em; cursor: pointer; transition: background 0.3s; }
-        button:hover { background: #45a049; }
-        .loading-spinner { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        button { background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 1.2em; cursor: pointer; }
+        button:focus-visible { outline: 3px solid #173D32; outline-offset: 3px; }
+        #status { min-height: 1.5em; margin-top: 16px; }
     </style>
 </head>
 <body>
-    <div class="loading-spinner" id="loadingSpinner">
-        <!-- Spinner CSS here -->
-    </div>
-    
-    <div class="container">
+    <main class="container">
         <h1>PhantomGuard</h1>
-        <p>Your Ultimate Phone Security & Optimization Tool</p>
-        <button onclick="handleStart()">Get Started</button>
-    </div>
-
+        <p>Your Ultimate Phone Security &amp; Optimization Tool</p>
+        <button type="button" onclick="showStatus()">Get Started</button>
+        <p id="status" role="status" aria-live="polite"></p>
+    </main>
     <script>
-        function handleStart() {
-            // Show loading spinner
-            document.getElementById('loadingSpinner').style.display = 'block';
-            
-            // Trigger permission request via JS Bridge
-            // This will trigger onPermissionRequest in MainActivity
-            window.AndroidBridge.requestPermissions();
-            
-            setTimeout(() => {
-                document.getElementById('loadingSpinner').style.display = 'none';
-                alert("Setup Complete!");
-            }, 3000);
+        function showStatus() {
+            document.getElementById('status').textContent = 'Ready to use.';
         }
     </script>
 </body>
