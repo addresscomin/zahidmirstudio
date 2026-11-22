@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhantomGuard</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;color:#26332e}
+.container{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px}
+h1{font-size:2em;margin:0 0 10px;color:#26332e}
+p{color:#66736d;margin:0 0 28px}
+button{background:#4CAF50;color:white;padding:15px 30px;border:0;border-radius:7px;font-size:1.05em;cursor:pointer}
+button:hover{background:#45a049}
+#loadingSpinner{display:none;width:30px;height:30px;border:4px solid #d8e2dc;border-top-color:#4CAF50;border-radius:50%;animation:spin .8s linear infinite;margin:22px auto}
+#details{display:none;white-space:pre-line;text-align:left;background:white;border-radius:10px;padding:16px;margin-top:20px;width:100%;max-width:360px;line-height:1.6}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>PhantomGuard</h1>
+  <p>Your Phone Security &amp; Optimization Tool</p>
+  <button onclick="handleStart()">Get Started</button>
+  <div id="loadingSpinner" aria-label="Loading"></div>
+  <div id="details"></div>
+</div>
+<script>
+function handleStart(){
+  const spinner=document.getElementById('loadingSpinner');
+  const details=document.getElementById('details');
+  spinner.style.display='block';
+  details.style.display='none';
+  if(window.AndroidBridge){
+    window.AndroidBridge.requestPermissions();
+    setTimeout(()=>{
+      spinner.style.display='none';
+      details.textContent=window.AndroidBridge.getDeviceSummary();
+      details.style.display='block';
+    },500);
+  } else {
+    spinner.style.display='none';
+    details.textContent='Open this page inside the PhantomGuard Android app to view device details.';
+    details.style.display='block';
+  }
+}
+</script>
+</body>
+</html>
