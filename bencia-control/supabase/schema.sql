@@ -64,7 +64,7 @@ create table if not exists public.activity_events (
   summary text not null,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  foreign key (agent_id, organization_id) references public.agents(id, organization_id) on delete set null
+  foreign key (agent_id, organization_id) references public.agents(id, organization_id) on delete set null (agent_id)
 );
 
 create table if not exists public.decommission_tasks (
@@ -152,10 +152,13 @@ for insert to authenticated with check (
   and private.has_org_role(organization_id, array['owner','admin'])
 );
 create policy "owners update membership roles" on public.organization_memberships
-for update to authenticated using (private.has_org_role(organization_id, array['owner']))
-with check (private.has_org_role(organization_id, array['owner']));
+for update to authenticated using (role <> 'owner' and private.has_org_role(organization_id, array['owner']))
+with check (role in ('admin','reviewer','member','auditor') and private.has_org_role(organization_id, array['owner']));
 create policy "owners admins remove members" on public.organization_memberships
-for delete to authenticated using (private.has_org_role(organization_id, array['owner','admin']));
+for delete to authenticated using (
+  role <> 'owner'
+  and (private.has_org_role(organization_id, array['owner']) or private.has_org_role(organization_id, array['admin']))
+);
 
 create policy "members read agents" on public.agents
 for select to authenticated using (private.has_org_role(organization_id));
