@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import ConnectedWorkspace from './ConnectedWorkspace';
+import { isSupabaseConfigured } from './lib/supabase';
 import { Activity, AlertTriangle, Bot, Check, ChevronRight, FileClock, FileText, LayoutDashboard, Plus, Search, ShieldCheck, Users, X } from 'lucide-react';
 
 type Agent = {
@@ -27,6 +29,7 @@ export default function App() {
   const [notice,setNotice] = useState('');
   const filtered = useMemo(() => agents.filter(a => [a.name,a.id,a.owner,a.framework].join(' ').toLowerCase().includes(query.toLowerCase())),[agents,query]);
   const flagged = agents.filter(a => a.review !== 'Current').length;
+  if (isSupabaseConfigured) return <ConnectedWorkspace/>;
   function addAgent(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
