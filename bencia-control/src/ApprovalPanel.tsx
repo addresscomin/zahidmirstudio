@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Check, Clock3, Plus, ShieldCheck, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
@@ -31,7 +31,7 @@ export default function ApprovalPanel({ orgId, userId, role, agents }: {
   }
   useEffect(()=>{ load().catch(e=>setError(e.message ?? 'Could not load approval requests.')); },[orgId]);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (!supabase || !agentId || !summary.trim()) return;
     setBusy(true); setError(''); setNotice('');
