@@ -12,23 +12,25 @@ npm run dev
 
 Without Supabase environment values, the app opens in clearly labelled preview mode with fictional in-memory data. When both Supabase values are configured, the app requires email/password authentication.
 
-## Current milestone (0.1.1)
+## Current milestone (0.2.0)
 
-- Responsive dashboard and agent registry preview
-- Agent registration form (local preview only)
-- Supabase client configuration using a publishable key
-- Email/password sign-in and sign-up gate when configured
-- Initial organization-scoped PostgreSQL schema and RLS policy draft in supabase/schema.sql
-- Example environment file with blank values
+- Responsive preview dashboard and registry
+- Supabase email/password authentication gate
+- Create an organization; creator is assigned the first owner role by database trigger
+- Load organization memberships and switch between available workspaces
+- Register agents in PostgreSQL with environment/framework metadata
+- Record declared tools/APIs as permission metadata
+- Append a registration activity event
+- Organization-scoped RLS policy draft
+- GitHub Actions build workflow scoped to the Bencia Control folder
 
 ## Not yet implemented or verified
 
-- Agent CRUD persistence against PostgreSQL
-- Organization creation and workspace selection UI
-- Member invitation and role management
-- Automated RLS integration tests
+- Build workflow result has not yet been inspected
+- Automated cross-organization RLS integration tests
+- Member invitations and role administration UI
 - Approval decision workflow
-- Tamper-evident audit storage
+- Stronger server-side audit event validation and tamper evidence
 - Real emergency shutdown or agent blocking
 - Monthly report generation
 
@@ -39,3 +41,4 @@ Without Supabase environment values, the app opens in clearly labelled preview m
 - The SQL file is a draft and has not been applied to a live Bencia database.
 - Use a dedicated Bencia Supabase project. Do not reuse another product's database.
 - Review and test the SQL against an isolated project before production use.
+- This app is an early prototype, not a security product ready for production deployment.
