@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Activity, AlertTriangle, Bot, Building2, Check, ChevronDown, Plus, Search, ShieldCheck, Users } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import ApprovalPanel from './ApprovalPanel';
 
 type Org = { organization_id: string; role: string; organizations: { id: string; name: string } | null };
 type AgentRow = { id: string; name: string; environment: string; framework: string | null; owner_id: string | null; created_at: string };
@@ -8,6 +9,7 @@ type PermissionRow = { agent_id: string; resource_name: string; access_level: st
 
 export default function ConnectedWorkspace() {
   const [userId,setUserId] = useState('');
+  const [activeTab,setActiveTab] = useState<'agents'|'approvals'>('agents');
   const [orgs,setOrgs] = useState<Org[]>([]);
   const [orgId,setOrgId] = useState('');
   const [orgName,setOrgName] = useState('');
@@ -122,7 +124,8 @@ export default function ConnectedWorkspace() {
       <div className="brand"><span className="mark">B</span><span><b>BENCIA</b><small>CONTROL</small></span></div>
       <p className="eyebrow">WORKSPACE</p>
       {orgs.length>0 && <div className="org-select"><Building2 size={15}/><select value={orgId} onChange={e=>changeOrg(e.target.value)}>{orgs.map(o=><option key={o.organization_id} value={o.organization_id}>{o.organizations?.name ?? 'Workspace'}</option>)}</select><ChevronDown size={13}/></div>}
-      <button className="connected-nav active"><Bot size={16}/> Agent registry</button>
+      <button className={`connected-nav ${activeTab==='agents'?'active':''}`} onClick={()=>setActiveTab('agents')}><Bot size={16}/> Agent registry</button>
+      <button className={`connected-nav ${activeTab==='approvals'?'active':''}`} onClick={()=>setActiveTab('approvals')}><ShieldCheck size={16}/> Approvals</button>
       <div className="connected-user"><Users size={15}/><span>Signed-in member<small>{activeOrg?.role ?? 'No role'}</small></span></div>
       <button className="auth-signout" onClick={()=>supabase?.auth.signOut()}>Sign out</button>
     </aside>
@@ -132,7 +135,7 @@ export default function ConnectedWorkspace() {
         {notice && <div className="notice"><Check size={15}/>{notice}<button onClick={()=>setNotice('')}>×</button></div>}
         {error && <div className="connected-error" role="alert">{error}</div>}
         {orgs.length===0 ? <div className="workspace-empty"><Building2 size={28}/><p className="eyebrow">FIRST-TIME SETUP</p><h1>Create your organization workspace.</h1><p>Your agent inventory will be isolated to this workspace. You can invite teammates after membership management is implemented.</p><button className="primary" onClick={()=>setShowOrg(true)}><Plus size={16}/> Create workspace</button></div> :
-        <>
+        activeTab==='approvals' ? <ApprovalPanel orgId={orgId} userId={userId} role={activeOrg?.role ?? 'member'} agents={agents.map(a=>({id:a.id,name:a.name}))}/> : <>
           <div className="connected-heading"><div><p className="eyebrow">ORGANIZATION INVENTORY</p><h1>Agent registry</h1><p className="sub">Live records from your organization database.</p></div><button className="primary" onClick={()=>setShowAgent(true)}><Plus size={16}/> Register agent</button></div>
           <div className="connected-metrics">
             <div><Bot/><strong>{agents.length}</strong><span>Registered agents</span></div>
