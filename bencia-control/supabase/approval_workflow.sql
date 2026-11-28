@@ -2,6 +2,20 @@
 -- Decisions are made through a narrowly-scoped RPC; direct row updates are constrained too.
 
 drop policy if exists "reviewers decide approval requests" on public.approval_requests;
+drop policy if exists "reviewers decide pending approval requests" on public.approval_requests;
+drop policy if exists "members submit approval requests" on public.approval_requests;
+
+create policy "members submit pending approval requests"
+on public.approval_requests
+for insert
+to authenticated
+with check (
+  status = 'pending'
+  and decided_by is null
+  and decided_at is null
+  and requested_by = (select auth.uid())
+  and private.has_org_role(organization_id, array['owner','admin','member'])
+);
 
 create policy "reviewers decide pending approval requests"
 on public.approval_requests
@@ -9,6 +23,7 @@ for update
 to authenticated
 using (
   status = 'pending'
+  and requested_by <> (select auth.uid())
   and private.has_org_role(organization_id, array['owner','admin','reviewer'])
 )
 with check (
@@ -26,6 +41,9 @@ as $$
 begin
   if old.status <> 'pending' then
     raise exception 'Only pending requests can be decided';
+  end if;
+  if old.requested_by = (select auth.uid()) then
+    raise exception 'A requester cannot decide their own request';
   end if;
   if new.id is distinct from old.id
      or new.organization_id is distinct from old.organization_id
